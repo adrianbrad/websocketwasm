@@ -1,26 +1,55 @@
 package websocketwasm
 
 import (
-	"net"
+	"fmt"
+	"syscall/js"
 
-	"github.com/adrianbrad/websocketwasm/wsclient"
+	"github.com/adrianbrad/websocketwasm/browser"
 )
 
-type Conn struct {
-	*wsclient.Websocket
+type WebSocket struct {
+	*browser.WebSocket
+	Send     chan []byte
+	Received chan []byte
+
+	onOpenFunc    js.Func
+	onCloseFunc   js.Func
+	onMessageFunc js.Func
 }
 
-func Dial(url string) (net.Conn, error) {
+func New(url string) (ws *WebSocket, err error) {
+	wsb, err := browser.NewWebsocket(url)
+	if err != nil {
+		return
+	}
+	ws = &WebSocket{
+		WebSocket: wsb,
+		Send:      make(chan []byte),
+		Received:  make(chan []byte),
+	}
+	ws.onOpenFunc = js.FuncOf(ws.onOpenListener)
+	ws.onCloseFunc = js.FuncOf(ws.onCloseListener)
+	ws.onMessageFunc = js.FuncOf(ws.onMessageListener)
+
+	wsb.OnOpen(ws.onOpenFunc)
+	wsb.OnClose(ws.onCloseFunc)
+
 	return nil, nil
 }
 
-func (c *Conn) Read() {
+func (w *WebSocket) onOpenListener(this js.Value, args []js.Value) interface{} {
+	fmt.Println("Open")
+	return nil
 }
 
-func (c *Conn) Write() {
-
+func (w *WebSocket) onMessageListener(this js.Value, args []js.Value) interface{} {
+	fmt.Println("Message")
+	fmt.Println(args[0])
+	return nil
 }
 
-func (c *Conn) Close() {
+func (w *WebSocket) onCloseListener(this js.Value, args []js.Value) interface{} {
+	fmt.Println("Close")
 
+	return nil
 }
