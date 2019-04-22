@@ -39,6 +39,7 @@ func New(url string) (ws *WebSocket, err error) {
 
 func (w *WebSocket) onOpenListener(this js.Value, args []js.Value) interface{} {
 	fmt.Println("Open")
+	w.WebSocket.OnMessage(w.onMessageFunc)
 	return nil
 }
 
