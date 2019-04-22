@@ -1,11 +1,13 @@
-package wsclient
+package websocketwasm
 
 import (
 	"net"
+
+	"github.com/adrianbrad/websocketwasm/wsclient"
 )
 
 type Conn struct {
-	*wsclient.websocket
+	*wsclient.Websocket
 }
 
 func Dial(url string) (net.Conn, error) {
