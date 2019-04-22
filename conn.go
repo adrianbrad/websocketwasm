@@ -34,7 +34,7 @@ func New(url string) (ws *WebSocket, err error) {
 	wsb.OnOpen(ws.onOpenFunc)
 	wsb.OnClose(ws.onCloseFunc)
 
-	return nil, nil
+	return
 }
 
 func (w *WebSocket) onOpenListener(this js.Value, args []js.Value) interface{} {
