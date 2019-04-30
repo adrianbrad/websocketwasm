@@ -8,4 +8,5 @@
         "GOOS":"js",
     },
     "go.installDependenciesWhenBuilding": false,
+    "go.formatTool": "goimports",
 }

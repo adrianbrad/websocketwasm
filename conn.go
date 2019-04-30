@@ -33,6 +33,7 @@ func New(url string) (ws *WebSocket, err error) {
 
 	wsb.OnOpen(ws.onOpenFunc)
 	wsb.OnClose(ws.onCloseFunc)
+	wsb.OnMessage(ws.onMessageFunc)
 
 	return
 }
@@ -53,4 +54,45 @@ func (w *WebSocket) onCloseListener(this js.Value, args []js.Value) interface{} 
 	fmt.Println("Close")
 
 	return nil
+}
+
+func (w *WebSocket) Read(b []byte) (n int, err error) {
+	m := <-w.Received
+	receivedBytes := getFrameData(m.Get("data"))
+	n = copy(b, receivedBytes)
+	return
+}
+
+func (w *WebSocket) Write(b []byte) (n int, err error) {
+	byteArray := js.TypedArrayOf(b)
+	defer byteArray.Release()
+	err = w.WebSocket.Send(js.ValueOf(byteArray))
+	if err != nil {
+		n = 0
+		return
+	}
+	n = len(b)
+	return
+}
+
+func (w *WebSocket) WriteString(s string) (n int, err error) {
+	err = w.WebSocket.Send(js.ValueOf(s))
+	if err != nil {
+		n = 0
+		return
+	}
+	n = len(s)
+	return
+}
+
+func getFrameData(obj js.Value) []byte {
+	if obj.InstanceOf(js.Global().Get("ArrayBuffer")) {
+		uint8Array := js.Global().Get("Uint8Array").New(obj)
+		data := make([]byte, uint8Array.Length())
+		for i, arrayLen := 0, uint8Array.Length(); i < arrayLen; i++ {
+			data[i] = byte(uint8Array.Index(i).Int())
+		}
+		return data
+	}
+	return []byte(obj.String())
 }
