@@ -11,13 +11,9 @@ type WebSocket struct {
 	*browser.WebSocket
 	Send     chan []byte
 	Received chan js.Value
-
-	onOpenFunc    js.Func
-	onCloseFunc   js.Func
-	onMessageFunc js.Func
 }
 
-func New(url string) (ws *WebSocket, err error) {
+func Dial(url string) (ws *WebSocket, err error) {
 	wsb, err := browser.NewWebsocket(url)
 	if err != nil {
 		return
@@ -27,21 +23,46 @@ func New(url string) (ws *WebSocket, err error) {
 		Send:      make(chan []byte),
 		Received:  make(chan js.Value),
 	}
-	ws.onOpenFunc = js.FuncOf(ws.onOpenListener)
-	ws.onCloseFunc = js.FuncOf(ws.onCloseListener)
-	ws.onMessageFunc = js.FuncOf(ws.onMessageListener)
 
-	wsb.OnOpen(ws.onOpenFunc)
-	wsb.OnClose(ws.onCloseFunc)
-	wsb.OnMessage(ws.onMessageFunc)
+	var (
+		openHandler  js.Func
+		closeHandler js.Func
+	)
+
+	removeHandlers := func() {
+		ws.Call("removeEventListener", "open", openHandler)
+		ws.Call("removeEventListener", "close", closeHandler)
+		openHandler.Release()
+		closeHandler.Release()
+	}
+
+	openCh := make(chan error, 1)
+
+	onOpenHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		removeHandlers()
+		close(openCh)
+		return nil
+	})
+	onCloseHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		removeHandlers()
+		openCh <- fmt.Errorf("%s", args[0].Get("code").String())
+		close(openCh)
+		return nil
+	})
+
+	wsb.OnOpen(onOpenHandler)
+	wsb.OnClose(onCloseHandler)
+
+	err, ok := <-openCh
+	if ok && err != nil {
+		return nil, err
+	}
+
+	ws.Set("binaryType", "arraybuffer")
+	wsb.OnMessage(js.FuncOf(ws.onMessageListener))
+	wsb.OnClose(js.FuncOf(ws.onCloseListener))
 
 	return
-}
-
-func (w *WebSocket) onOpenListener(this js.Value, args []js.Value) interface{} {
-	fmt.Println("Open")
-	w.WebSocket.OnMessage(w.onMessageFunc)
-	return nil
 }
 
 func (w *WebSocket) onMessageListener(this js.Value, args []js.Value) interface{} {
@@ -52,7 +73,6 @@ func (w *WebSocket) onMessageListener(this js.Value, args []js.Value) interface{
 
 func (w *WebSocket) onCloseListener(this js.Value, args []js.Value) interface{} {
 	fmt.Println("Close")
-
 	return nil
 }
 

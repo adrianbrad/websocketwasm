@@ -1,6 +1,8 @@
 package browser
 
-import "syscall/js"
+import (
+	"syscall/js"
+)
 
 type WebSocket struct {
 	js.Value
@@ -8,8 +10,12 @@ type WebSocket struct {
 
 func NewWebsocket(url string) (ws *WebSocket, err error) {
 	defer handleErrorIfRaised(err)
-	ws = &WebSocket{js.Global().Get("WebSocket").New(url)}
-	ws.Set("binaryType", "arraybuffer")
+	webSocket := js.Global().Get("WebSocket").New(url)
+
+	ws = &WebSocket{
+		Value: webSocket,
+	}
+
 	return
 }
 
@@ -37,7 +43,7 @@ func (w *WebSocket) OnMessage(callback js.Func) (err error) {
 	return
 }
 
-func (w *WebSocket) Close(callback js.Func) (err error) {
+func (w *WebSocket) Close() (err error) {
 	defer handleErrorIfRaised(err)
 	w.Value.Call("close", 1000)
 	return
