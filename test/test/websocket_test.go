@@ -3,6 +3,7 @@ package websocket_test
 import (
 	"bytes"
 	"fmt"
+	"syscall/js"
 	"testing"
 
 	"github.com/LinearZoetrope/testevents"
@@ -68,4 +69,28 @@ func TestWSSendAndReceiveBinaryMessageSucess(t_ *testing.T) {
 	if !bytes.Equal(mes[:n], messageToBeSent) {
 		t.Fatalf("Received message: %s not equal to expected message: %s", string(mes[:n]), messageToBeSent)
 	}
+}
+
+func TestMain(t_ *testing.T) {
+	t := testevents.Start(t_, "Add", true)
+	defer t.Done()
+
+	connect := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		go func() {
+			ws, _ := websocketwasm.Dial(getWSBaseURL() + "echo")
+			wsJSV := js.ValueOf(ws)
+			wsJSV.Set("sendMessage", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				go func() {
+					ws.WriteString(args[0].String())
+				}()
+				return nil
+			}))
+			js.Global().Set("usr", wsJSV)
+		}()
+		return nil
+	})
+
+	js.Global().Set("add", connect)
+
+	select {}
 }

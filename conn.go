@@ -67,7 +67,7 @@ func Dial(url string) (ws *WebSocket, err error) {
 
 func (w *WebSocket) onMessageListener(this js.Value, args []js.Value) interface{} {
 	fmt.Println("Message")
-	w.Received <- args[0]
+	go func() { w.Received <- args[0] }()
 	return nil
 }
 
