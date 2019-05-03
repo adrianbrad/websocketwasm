@@ -92,7 +92,7 @@ func TestRetrieveWSObject(t_ *testing.T) {
 		return nil
 	})
 
-	connect.Invoke(callbackFunc.JSValue())
+	connect.Invoke(callbackFunc)
 
 	<-done
 }
