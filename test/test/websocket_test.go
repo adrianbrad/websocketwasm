@@ -71,26 +71,28 @@ func TestWSSendAndReceiveBinaryMessageSucess(t_ *testing.T) {
 	}
 }
 
-func TestMain(t_ *testing.T) {
+func TestRetrieveWSObject(t_ *testing.T) {
 	t := testevents.Start(t_, "Add", true)
 	defer t.Done()
-
+	done := make(chan struct{}, 1)
 	connect := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		go func() {
-			ws, _ := websocketwasm.Dial(getWSBaseURL() + "echo")
-			wsJSV := js.ValueOf(ws)
-			wsJSV.Set("sendMessage", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				go func() {
-					ws.WriteString(args[0].String())
-				}()
-				return nil
-			}))
-			js.Global().Set("usr", wsJSV)
+			ws, err := websocketwasm.Dial(getWSBaseURL() + "echo")
+			if err != nil {
+				t.Fatal("Unexpected websocket failed connection")
+			}
+			args[0].Invoke(ws)
 		}()
 		return nil
 	})
 
-	js.Global().Set("add", connect)
+	callbackFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		fmt.Println(args[0])
+		done <- struct{}{}
+		return nil
+	})
 
-	select {}
+	connect.Invoke(callbackFunc.JSValue())
+
+	<-done
 }

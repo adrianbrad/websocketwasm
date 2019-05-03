@@ -11,7 +11,6 @@ type WebSocket struct {
 func NewWebsocket(url string) (ws *WebSocket, err error) {
 	defer handleErrorIfRaised(err)
 	webSocket := js.Global().Get("WebSocket").New(url)
-
 	ws = &WebSocket{
 		Value: webSocket,
 	}

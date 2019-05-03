@@ -13,6 +13,23 @@ type WebSocket struct {
 	Received chan js.Value
 }
 
+func handshakeOnOpen(ch chan error, removeHandlers func()) js.Func {
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		removeHandlers()
+		close(ch)
+		return nil
+	})
+}
+
+func handshakeOnClose(ch chan error, removeHandlers func()) js.Func {
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		removeHandlers()
+		ch <- fmt.Errorf("%s", args[0].Get("code").String())
+		close(ch)
+		return nil
+	})
+}
+
 func Dial(url string) (ws *WebSocket, err error) {
 	wsb, err := browser.NewWebsocket(url)
 	if err != nil {
@@ -38,20 +55,22 @@ func Dial(url string) (ws *WebSocket, err error) {
 
 	openCh := make(chan error, 1)
 
-	onOpenHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		removeHandlers()
-		close(openCh)
-		return nil
-	})
-	onCloseHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		removeHandlers()
-		openCh <- fmt.Errorf("%s", args[0].Get("code").String())
-		close(openCh)
-		return nil
-	})
+	// onOpenHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	// 	removeHandlers()
+	// 	close(openCh)
+	// 	return nil
+	// })
+	// onCloseHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	// 	removeHandlers()
+	// 	openCh <- fmt.Errorf("%s", args[0].Get("code").String())
+	// 	close(openCh)
+	// 	return nil
+	// })
+	openHandler = handshakeOnOpen(openCh, removeHandlers)
+	closeHandler = handshakeOnClose(openCh, removeHandlers)
 
-	wsb.OnOpen(onOpenHandler)
-	wsb.OnClose(onCloseHandler)
+	wsb.OnOpen(openHandler)
+	wsb.OnClose(closeHandler)
 
 	err, ok := <-openCh
 	if ok && err != nil {
@@ -61,7 +80,6 @@ func Dial(url string) (ws *WebSocket, err error) {
 	ws.Set("binaryType", "arraybuffer")
 	wsb.OnMessage(js.FuncOf(ws.onMessageListener))
 	wsb.OnClose(js.FuncOf(ws.onCloseListener))
-
 	return
 }
 
