@@ -11,6 +11,8 @@ type WebSocket struct {
 	*browser.WebSocket
 	Send     chan []byte
 	Received chan js.Value
+
+	onMessageFunc js.Func
 }
 
 func handshakeOnOpen(ch chan error, removeHandlers func()) js.Func {
@@ -78,15 +80,28 @@ func Dial(url string) (ws *WebSocket, err error) {
 	}
 
 	ws.Set("binaryType", "arraybuffer")
-	wsb.OnMessage(js.FuncOf(ws.onMessageListener))
+	ws.onMessageFunc = js.FuncOf(ws.onMessageListener)
+	wsb.OnMessage(ws.onMessageFunc)
 	wsb.OnClose(js.FuncOf(ws.onCloseListener))
 	return
 }
 
 func (w *WebSocket) onMessageListener(this js.Value, args []js.Value) interface{} {
 	fmt.Println("Message")
-	go func() { w.Received <- args[0] }()
+	go func() {
+		w.Received <- args[0]
+	}()
 	return nil
+}
+
+func (w *WebSocket) SetOnMessageFunc() interface{} {
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		w.WebSocket.Call("removeEventListener", "message", w.onMessageFunc)
+		w.onMessageFunc.Release()
+		w.WebSocket.Call("addEventListener", "message", args[0])
+		// TODO close receive channel
+		return nil
+	})
 }
 
 func (w *WebSocket) onCloseListener(this js.Value, args []js.Value) interface{} {

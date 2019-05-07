@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	http.Handle("/", http.FileServer(http.Dir("./test/")))
+	http.Handle("/", http.FileServer(http.Dir("./test/test")))
 
 	http.HandleFunc("/ws/echo", func(w http.ResponseWriter, r *http.Request) {
 		u := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
