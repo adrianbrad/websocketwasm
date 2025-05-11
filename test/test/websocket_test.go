@@ -71,25 +71,6 @@ func TestWSSendAndReceiveBinaryMessageSucess(t_ *testing.T) {
 	}
 }
 
-func TestWSSetOutputSucess(t_ *testing.T) {
-	t := testevents.Start(t_, "TestSendBinaryMessageSuccess", true)
-	defer t.Done()
-	messageToBeSent := []byte(`{"wtf":1}`)
-	wsConn, _ := websocketwasm.Dial(getWSBaseURL() + "echo")
-
-	fmt.Println(wsConn.Write(messageToBeSent))
-
-	mes := make([]byte, 10)
-	n, err := wsConn.Read(mes)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(mes[:n], messageToBeSent) {
-		t.Fatalf("Received message: %s not equal to expected message: %s", string(mes[:n]), messageToBeSent)
-	}
-}
-
 func TestRetrieveWSObject(t_ *testing.T) {
 	t := testevents.Start(t_, "Add", true)
 	defer t.Done()
